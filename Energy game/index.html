@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="lt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#164f56" />
+    <meta name="description" content="Trumpas anoniminis energijos vartojimo sąmoningumo testas mokymų dalyviams." />
+    <meta property="og:title" content="Energijos vartojimo sąmoningumo testas" />
+    <meta property="og:description" content="Pažinkite ir valdykite savo energijos vartojimą." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="assets/og-assessment.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Energijos vartojimo sąmoningumo testas" />
+    <meta name="twitter:description" content="Pažinkite ir valdykite savo energijos vartojimą." />
+    <meta name="twitter:image" content="assets/og-assessment.png" />
+    <title>Energijos vartojimo sąmoningumo testas</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="app" class="app-shell">
+      <section class="welcome-panel" aria-labelledby="welcome-title">
+        <header class="brand-line">
+          <img src="images/LEA-LOGOTIPAS-ŽALIAS.png" alt="Lietuvos energetikos agentūra" />
+        </header>
+        <div class="welcome-visual" aria-hidden="true">
+          <span class="energy-mark">⚡</span>
+          <i class="orbit orbit-one"></i><i class="orbit orbit-two"></i>
+        </div>
+        <p class="eyebrow">3–5 min. · Anonimiška</p>
+        <h1 id="welcome-title">Energijos vartojimo sąmoningumo testas</h1>
+        <p class="lead">Kaip gerai pažįstate ir valdote savo energijos vartojimą namuose?</p>
+        <p class="supporting-copy">Atsakykite į kelis trumpus klausimus ir palyginkite savo rezultatą su kitais mokymų dalyviais.</p>
+        <button class="primary-button" id="start-button" type="button">Pradėti <span aria-hidden="true">→</span></button>
+      </section>
+    </main>
+    <script src="config.js"></script>
+    <script src="questions.js"></script>
+    <script src="supabase-client.js"></script>
+    <script src="pdf-export.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
