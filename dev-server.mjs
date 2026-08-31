@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 
 const root = process.cwd();
-const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".png": "image/png" };
+const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg" };
 
 createServer((request, response) => {
   const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname);

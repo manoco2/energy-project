@@ -115,10 +115,23 @@ assert.equal(globalThis.EnergyAssessment.questionByCode("E3").text, "Peržiūriu
 
 const resultsSource = await fs.readFile(new URL("../results.js", import.meta.url), "utf8");
 const appSource = await fs.readFile(new URL("../app.js", import.meta.url), "utf8");
+const stylesSource = await fs.readFile(new URL("../styles.css", import.meta.url), "utf8");
+const pdfSource = await fs.readFile(new URL("../pdf-export.js", import.meta.url), "utf8");
 assert.equal(resultsSource.includes("setInterval("), false, "TEST 16 grupės rezultatų ekranas neatnaujinamas periodiškai");
 assert.equal(appSource.includes("setInterval("), false, "TEST 16 individualus ekranas neatlieka periodinių API užklausų");
+assert.equal(stylesSource.includes("group-average-line"), false, "TEST 16 grupės vidurkio burbuliukas neturi papildomos linijos");
+assert.equal(stylesSource.includes("own-average-line"), false, "TEST 16 asmens rezultato burbuliukas neturi papildomos linijos");
+assert.equal(pdfSource.includes("Jūsų rezultatas aukštesnis nei"), true, "TEST 16 PDF palyginimo tekstas patikslintas");
+assert.equal(pdfSource.includes("Math.PI * 2 * totalScore / 100"), true, "TEST 16 PDF žiedas užpildomas pagal rezultatą");
+assert.equal(appSource.includes("LIFE20 IPC/LT/000002"), true, "TEST 16 programos poraštėje pateikiamas projekto finansavimo tekstas");
+assert.equal(appSource.includes("images/life_logo.jpg"), true, "TEST 16 programos poraštėje naudojamas LIFE logotipas");
+assert.equal(appSource.includes("images/AM_logo.png"), true, "TEST 16 programos poraštėje naudojamas Aplinkos ministerijos logotipas");
+assert.equal(pdfSource.includes("PROJECT_FUNDING_TEXT"), true, "TEST 16 PDF įtraukta projekto finansavimo poraštė");
 assert.equal(resultsSource.includes("download-group-pdf"), false, "TEST 16 grupės rezultatų ekrane nėra PDF atsisiuntimo");
 assert.equal(resultsSource.includes("Norėdami matyti rezultatus atnaujinkite duomenis"), true, "TEST 16 rodomas atnaujinimo paaiškinimas");
+assert.equal(resultsSource.includes("Pažįstu savo elektros vartojimą"), true, "TEST 16 grupės ekrane rodoma pažinimo tema");
+assert.equal(resultsSource.includes("Valdau elektros vartojimą"), true, "TEST 16 grupės ekrane rodoma valdymo tema");
+assert.equal(resultsSource.includes("Suprantu savo šilumos vartojimą"), true, "TEST 16 grupės ekrane rodoma šilumos tema");
 assert.equal(appSource.includes("id=\"refresh-data-button\""), true, "TEST 16 individualiame rezultate yra duomenų atnaujinimo mygtukas");
 const handlers = new Map();
 const root = { innerHTML: "", prepend() {} };

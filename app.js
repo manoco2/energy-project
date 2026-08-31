@@ -71,6 +71,17 @@
     return `<header class="brand-line compact-brand"><img src="images/LEA-LOGOTIPAS-ŽALIAS.png" alt="Lietuvos energetikos agentūra" /></header>`;
   }
 
+  function projectFooter() {
+    return `<footer class="project-footer">
+      <div class="project-logos" aria-label="Projektą finansuojančios ir įgyvendinančios institucijos">
+        <img class="project-logo-lea" src="images/LEA-LOGOTIPAS-ŽALIAS.png" alt="Lietuvos energetikos agentūra" />
+        <img class="project-logo-life" src="images/life_logo.jpg" alt="Europos Sąjungos LIFE programa" />
+        <img class="project-logo-am" src="images/AM_logo.png" alt="Lietuvos Respublikos aplinkos ministerija" />
+      </div>
+      <p>Projektas „Energijos efektyvumo didinimas Lietuvoje“ (Nr. LIFE20 IPC/LT/000002) yra finansuojamas Europos Sąjungos LIFE programos ir Lietuvos Respublikos lėšomis.</p>
+    </footer>`;
+  }
+
   function flowHeader(label, current, total) {
     const percentage = total ? Math.round((current / total) * 100) : 0;
     return `${brandHeader()}<div class="flow-meta"><span>${escapeHtml(label)}</span><strong>${current} / ${total}</strong></div>
@@ -86,6 +97,7 @@
       <p class="lead">Kaip gerai pažįstate ir valdote savo energijos vartojimą namuose?</p>
       <p class="supporting-copy">Atsakykite į kelis trumpus klausimus ir palyginkite savo rezultatą su kitais mokymų dalyviais.</p>
       <button class="primary-button" id="start-button" type="button">Pradėti <span aria-hidden="true">→</span></button>
+      ${projectFooter()}
     </section>`;
     document.querySelector("#start-button").addEventListener("click", () => { state.stage = "self-rating"; save(); render(); });
   }
@@ -262,7 +274,7 @@
     const marker = (score, className) => {
       const x = xAt(score).toFixed(1);
       const y = yAtCount(countAt(score)).toFixed(1);
-      return `<line class="${className}-line" x1="${x}" y1="42" x2="${x}" y2="${y}" /><circle class="${className}-dot" cx="${x}" cy="${y}" r="10" />`;
+      return `<circle class="${className}-dot" cx="${x}" cy="${y}" r="12" />`;
     };
     const axisTicks = [0, 20, 40, 60, 80, 100].map((value) => {
       const x = xAt(value).toFixed(1);
@@ -373,6 +385,7 @@
       <p class="pdf-status" id="pdf-status" aria-live="polite"></p>
       <button class="secondary-button restart-button" id="restart-button" type="button">↻ Pradėti iš naujo</button>
       <p class="context-note centered">Pradėjus iš naujo bus atnaujintas ankstesnis šios sesijos rezultatas, todėl grupės dalyvių skaičius nepadidės.</p>
+      ${projectFooter()}
     </section>`;
     document.querySelector("#restart-button").addEventListener("click", () => {
       if (!confirm("Pradėti testą iš naujo? Ankstesni atsakymai šiame telefone bus išvalyti.")) return;

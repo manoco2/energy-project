@@ -91,10 +91,10 @@
     const score = Math.round(Number(summary.overall_average));
     const selfRating = Math.round(Number(summary.self_rating_average));
     const topicAverages = [
-      { label: "Pažįstame savo elektros vartojimą", value: summary.electricity_awareness_average },
-      { label: "Valdome elektros vartojimą", value: summary.electricity_management_average },
-      { label: "Suprantame savo šilumos vartojimą", value: summary.heating_average },
-    ].filter((item) => item.value !== null && item.value !== undefined);
+      { label: "Pažįstu savo elektros vartojimą", value: summary.electricity_awareness_average },
+      { label: "Valdau elektros vartojimą", value: summary.electricity_management_average },
+      { label: "Suprantu savo šilumos vartojimą", value: summary.heating_average },
+    ];
     const weakest = summary.lowest_questions || [];
     const strongest = summary.highest_questions || [];
     root.innerHTML = `${header(summary)}<section class="dashboard">
@@ -102,7 +102,7 @@
         <div class="score-orbit" style="--score:${score}"><div><small>Grupės vidurkis</small><strong>${score}</strong><span>/ 100</span></div></div>
         <div class="group-score-copy"><p>Energijos vartojimo sąmoningumo testo rezultatas</p><h1>${Number(summary.completed_count)} dalyvių bendras vidurkis</h1>
           <div class="topic-averages" aria-label="Bendras grupės vidurkis pagal temas">
-            ${topicAverages.map((item) => `<div><span>${escapeHtml(item.label)}</span><strong>${Math.round(Number(item.value))} / 100</strong></div>`).join("")}
+            ${topicAverages.map((item) => `<div><span>${escapeHtml(item.label)}</span><strong>${item.value === null || item.value === undefined ? "—" : Math.round(Number(item.value))} / 100</strong></div>`).join("")}
           </div>
           <div class="self-rating-average"><span>Vidutinis dalyvių savęs vertinimas prieš testą</span><strong>${selfRating} / 100</strong></div>
         </div>

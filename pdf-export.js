@@ -10,6 +10,7 @@
     muted: "#617579",
     white: "#ffffff",
   };
+  const PROJECT_FUNDING_TEXT = "Projektas „Energijos efektyvumo didinimas Lietuvoje“ (Nr. LIFE20 IPC/LT/000002) yra finansuojamas Europos Sąjungos LIFE programos ir Lietuvos Respublikos lėšomis.";
 
   const encoder = new TextEncoder();
   const ascii = (value) => encoder.encode(value);
@@ -112,13 +113,17 @@
     return Number.isFinite(value) ? `${formatNumber(value)} ${unit}` : "Nenurodyta";
   }
 
-  function loadLogo() {
+  function loadImage(source, errorMessage) {
     return new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error("Nepavyko įkelti LEA logotipo."));
-      image.src = "images/LEA-LOGOTIPAS-ŽALIAS.png";
+      image.onerror = () => reject(new Error(errorMessage));
+      image.src = source;
     });
+  }
+
+  function loadLogo() {
+    return loadImage("images/LEA-LOGOTIPAS-ŽALIAS.png", "Nepavyko įkelti LEA logotipo.");
   }
 
   async function renderCard(data) {
@@ -126,7 +131,11 @@
     canvas.width = 1240;
     canvas.height = 1754;
     const ctx = canvas.getContext("2d");
-    const logo = await loadLogo();
+    const [logo, lifeLogo, ministryLogo] = await Promise.all([
+      loadLogo(),
+      loadImage("images/life_logo.jpg", "Nepavyko įkelti LIFE logotipo."),
+      loadImage("images/AM_logo.png", "Nepavyko įkelti Aplinkos ministerijos logotipo."),
+    ]);
     const x = 84;
     const width = 1072;
 
@@ -156,10 +165,23 @@
     ctx.fillStyle = scoreGradient;
     leafRect(ctx, x, 330, width, 250, 44);
     ctx.fill();
-    ctx.fillStyle = COLORS.yellow;
+    const totalScore = Math.max(0, Math.min(100, Number(data.totalScore) || 0));
+    const ringStart = -Math.PI / 2;
+    const ringEnd = ringStart + Math.PI * 2 * totalScore / 100;
+    ctx.save();
+    ctx.lineWidth = 18;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
     ctx.beginPath();
-    ctx.arc(250, 455, 88, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(250, 455, 79, 0, Math.PI * 2);
+    ctx.stroke();
+    if (totalScore > 0) {
+      ctx.strokeStyle = COLORS.yellow;
+      ctx.beginPath();
+      ctx.arc(250, 455, 79, ringStart, ringEnd);
+      ctx.stroke();
+    }
+    ctx.restore();
     ctx.fillStyle = COLORS.deepGreen;
     ctx.beginPath();
     ctx.arc(250, 455, 70, 0, Math.PI * 2);
@@ -167,7 +189,7 @@
     ctx.fillStyle = COLORS.white;
     ctx.textAlign = "center";
     ctx.font = '900 64px "Segoe UI", Arial, sans-serif';
-    ctx.fillText(String(Math.round(Number(data.totalScore))), 250, 466);
+    ctx.fillText(String(Math.round(totalScore)), 250, 466);
     ctx.font = '700 21px "Segoe UI", Arial, sans-serif';
     ctx.fillText("/ 100", 250, 502);
     ctx.textAlign = "left";
@@ -194,7 +216,7 @@
       leafRect(ctx, x, comparisonBoxY, width, 132, 28);
       ctx.fill();
       const comparisonColumns = [x + 34, x + 390, x + 746];
-      const comparisonLabels = ["Jūsų rezultatas", "Grupės vidurkis", "Aukštesnis rezultatas nei"];
+      const comparisonLabels = ["Jūsų rezultatas", "Grupės vidurkis", "Jūsų rezultatas aukštesnis nei"];
       const comparisonValues = [
         `${data.scoreComparison.ownScore} / 100`,
         `${data.scoreComparison.groupAverage} / 100`,
@@ -256,14 +278,34 @@
     ctx.font = '600 19px "Segoe UI", Arial, sans-serif';
     drawWrapped(ctx, data.comparisonNote, x, noteY, width, 26, 2);
 
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = '500 16px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillText("Praktinio mokymų testo rezultatas skirtas apmąstymui, o ne diagnostiniam vertinimui.", canvas.width / 2, 1552);
+
     ctx.strokeStyle = COLORS.line;
     ctx.beginPath();
-    ctx.moveTo(x, 1625);
-    ctx.lineTo(x + width, 1625);
+    ctx.moveTo(x, 1572);
+    ctx.lineTo(x + width, 1572);
     ctx.stroke();
+
+    const logoGap = 30;
+    const leaLogoWidth = 150;
+    const lifeLogoWidth = 54;
+    const ministryLogoWidth = 92;
+    const logosWidth = leaLogoWidth + lifeLogoWidth + ministryLogoWidth + logoGap * 2;
+    let logoX = (canvas.width - logosWidth) / 2;
+    ctx.drawImage(logo, logoX, 1588, leaLogoWidth, 50);
+    logoX += leaLogoWidth + logoGap;
+    ctx.drawImage(lifeLogo, logoX, 1586, lifeLogoWidth, 54);
+    logoX += lifeLogoWidth + logoGap;
+    ctx.drawImage(ministryLogo, logoX, 1590, ministryLogoWidth, 53);
+
     ctx.fillStyle = COLORS.muted;
-    ctx.font = '500 20px "Segoe UI", Arial, sans-serif';
-    drawWrapped(ctx, "Praktinio mokymų testo rezultatas skirtas apmąstymui, o ne diagnostiniam vertinimui.", x, 1668, width, 28, 2);
+    ctx.font = '500 16px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = "center";
+    drawWrapped(ctx, PROJECT_FUNDING_TEXT, canvas.width / 2, 1668, width - 40, 21, 2);
+    ctx.textAlign = "left";
 
     return canvas;
   }
