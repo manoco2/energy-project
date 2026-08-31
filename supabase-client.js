@@ -40,18 +40,31 @@
     return readDemo().filter((item) => item.workshop_id === workshopId);
   }
 
+  function scoreDistribution(submissions) {
+    const counts = [0, 0, 0, 0, 0];
+    submissions.forEach((item) => {
+      const score = Math.max(0, Math.min(100, Number(item.total_score) || 0));
+      const index = score <= 20 ? 0 : score <= 40 ? 1 : score <= 60 ? 2 : score <= 80 ? 3 : 4;
+      counts[index] += 1;
+    });
+    return ["0–20", "21–40", "41–60", "61–80", "81–100"].map((label, index) => ({ label, count: counts[index] }));
+  }
+
   function calculateDemoSummary(workshopId) {
     const submissions = demoForWorkshop(workshopId);
     const completedCount = submissions.length;
-    if (completedCount < 5) return { completed_count: completedCount, unlocked: false, overall_average: null, lowest_questions: [] };
+    if (completedCount < 5) return { completed_count: completedCount, unlocked: false, overall_average: null, self_rating_average: null, lowest_questions: [], highest_questions: [] };
 
     const overallAverage = Math.round(submissions.reduce((sum, item) => sum + Number(item.total_score), 0) / completedCount);
+    const selfRatingAverage = Math.round(submissions.reduce((sum, item) => sum + Number(item.self_rating), 0) / completedCount);
     const questionScores = window.EnergyAssessment.QUESTIONS.map((question) => {
       const values = submissions.map((item) => item.answers?.[question.code]).filter((value) => value !== null && value !== undefined);
       return { question_code: question.code, valid_n: values.length, score: values.length ? Math.round((values.reduce((sum, value) => sum + Number(value), 0) / (values.length * 2)) * 100) : null };
-    }).filter((item) => item.valid_n >= 5).sort((a, b) => a.score - b.score || b.valid_n - a.valid_n).slice(0, 3);
+    }).filter((item) => item.valid_n >= 5);
+    const lowestQuestions = [...questionScores].sort((a, b) => a.score - b.score || b.valid_n - a.valid_n || a.question_code.localeCompare(b.question_code)).slice(0, 3);
+    const highestQuestions = [...questionScores].sort((a, b) => b.score - a.score || b.valid_n - a.valid_n || a.question_code.localeCompare(b.question_code)).slice(0, 3);
 
-    return { completed_count: completedCount, unlocked: true, overall_average: overallAverage, lowest_questions: questionScores };
+    return { completed_count: completedCount, unlocked: true, overall_average: overallAverage, self_rating_average: selfRatingAverage, lowest_questions: lowestQuestions, highest_questions: highestQuestions };
   }
 
   async function submitAssessment(payload, clientScores) {
@@ -92,6 +105,7 @@
         mode: "demo", completed_count: submissions.length, unlocked: true,
         group_average: Math.round(submissions.reduce((sum, item) => sum + Number(item.total_score), 0) / submissions.length),
         percentile: Math.round((lower / submissions.length) * 100),
+        score_distribution: scoreDistribution(submissions),
         consumption_comparison_count: comparable.length,
         other_per_square_metre: comparable.length >= 4 ? round2(comparable.reduce((sum, item) => sum + item.profile.S7 / Number(item.profile.S4), 0) / comparable.length) : null,
         other_per_household_member: comparable.length >= 4 ? round2(comparable.reduce((sum, item) => sum + item.profile.S7 / Number(item.profile.S5), 0) / comparable.length) : null,

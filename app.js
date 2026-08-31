@@ -4,7 +4,7 @@
   const config = window.APP_CONFIG;
   const app = document.querySelector("#app");
   const SESSION_KEY = "lea-awareness-session-id";
-  const STATE_VERSION = 2;
+  const STATE_VERSION = 3;
 
   function escapeHtml(value = "") {
     return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -91,22 +91,28 @@
   }
 
   function renderSelfRating() {
+    if (state.selfRating === null) {
+      state.selfRating = 50;
+      save();
+    }
     app.innerHTML = `<section class="test-panel">
       ${flowHeader("Trumpas įsivertinimas", 1, 1)}
       <div class="question-icon" aria-hidden="true">◒</div>
       <p class="eyebrow">Prieš pradedant</p>
       <h1 class="question-title">Kaip pats (-i) įvertintumėte savo energijos vartojimo sąmoningumą?</h1>
-      <div class="rating-scale" role="radiogroup" aria-label="Įvertinimas nuo 1 iki 10">
-        ${Array.from({ length: 10 }, (_, index) => index + 1).map((value) => `<button type="button" class="rating-number ${state.selfRating === value ? "active" : ""}" data-rating="${value}" role="radio" aria-checked="${state.selfRating === value}">${value}</button>`).join("")}
+      <div class="selected-rating" aria-live="polite">Pasirinkta: <strong id="self-rating-value">${state.selfRating} %</strong></div>
+      <div class="rating-slider-wrap">
+        <input class="rating-slider" id="self-rating" type="range" min="0" max="100" step="1" value="${state.selfRating}" aria-label="Energijos vartojimo sąmoningumo įvertinimas procentais" />
       </div>
-      <div class="scale-labels"><span>1 · Labai žemas</span><span>10 · Labai aukštas</span></div>
-      <div class="selected-rating" aria-live="polite">${state.selfRating ? `Pasirinkta: <strong>${state.selfRating} / 10</strong>` : "Pasirinkite skaičių"}</div>
-      <button class="primary-button" id="self-next" type="button" ${state.selfRating ? "" : "disabled"}>Toliau <span aria-hidden="true">→</span></button>
+      <div class="scale-labels"><span>0 % · Labai žemas</span><span>100 % · Labai aukštas</span></div>
+      <button class="primary-button" id="self-next" type="button">Toliau <span aria-hidden="true">→</span></button>
       <p class="context-note">Šis įsivertinimas į testo balą neįtraukiamas.</p>
     </section>`;
-    document.querySelectorAll("[data-rating]").forEach((button) => button.addEventListener("click", () => {
-      state.selfRating = Number(button.dataset.rating); save(); renderSelfRating();
-    }));
+    document.querySelector("#self-rating").addEventListener("input", (event) => {
+      state.selfRating = Number(event.target.value);
+      document.querySelector("#self-rating-value").textContent = `${state.selfRating} %`;
+      save();
+    });
     document.querySelector("#self-next").addEventListener("click", () => { state.stage = "profile"; state.profileIndex = 0; save(); render(); });
   }
 
@@ -193,8 +199,10 @@
 
   function payload() {
     const allowedAnswers = {};
+    const allowedProfile = {};
     state.applicableCodes.forEach((code) => { allowedAnswers[code] = state.answers[code] ?? null; });
-    return { workshop_id: workshopId, session_id: state.sessionId, self_rating: state.selfRating, profile: state.profile, answers: allowedAnswers };
+    PROFILE_QUESTIONS.forEach((question) => { allowedProfile[question.code] = state.profile[question.code]; });
+    return { workshop_id: workshopId, session_id: state.sessionId, self_rating: state.selfRating, profile: allowedProfile, answers: allowedAnswers };
   }
 
   function finishAssessment() {
@@ -215,12 +223,31 @@
   function groupCard() {
     const group = state.groupComparison;
     if (!group || !group.unlocked) {
-      const count = group?.completed_count ?? 0;
-      return `<section class="result-card group-card locked"><div class="result-card-icon">●●●</div><div><h2>Palyginimas su grupe</h2><p>Grupės palyginimas bus rodomas, kai testą baigs bent 5 dalyviai.</p><small>Dabar baigė: ${count}</small></div></section>`;
+      return `<section class="result-card group-card locked"><div class="result-card-icon">●●●</div><div><h2>Palyginimas su grupe</h2><p>Grupės palyginimas bus rodomas, kai testą baigs bent 5 dalyviai.</p></div></section>`;
     }
+    const ownScore = Math.round(Number(state.result.total_score));
+    const groupAverage = Math.round(Number(group.group_average));
+    const percentile = Math.round(Number(group.percentile));
+    const bands = Array.isArray(group.score_distribution) && group.score_distribution.length === 5
+      ? group.score_distribution
+      : [
+          { label: "0–20", count: 0 },
+          { label: "21–40", count: 0 },
+          { label: "41–60", count: 0 },
+          { label: "61–80", count: 0 },
+          { label: "81–100", count: 0 },
+        ];
+    const ownBand = ownScore <= 20 ? 0 : ownScore <= 40 ? 1 : ownScore <= 60 ? 2 : ownScore <= 80 ? 3 : 4;
+    const maxBandCount = Math.max(1, ...bands.map((band) => Number(band.count) || 0));
     return `<section class="result-card group-card"><div class="result-card-icon">↗</div><div><h2>Palyginimas su grupe</h2>
-      <div class="comparison-grid"><p><span>Tavo rezultatas</span><strong>${Math.round(state.result.total_score)} / 100</strong></p><p><span>Grupės vidurkis</span><strong>${Math.round(group.group_average)} / 100</strong></p></div>
-      <p class="percentile-copy">Tavo rezultatas aukštesnis už <strong>${Math.round(group.percentile)} %</strong> jau atsakiusių dalyvių.</p><small>Testą baigė: ${group.completed_count}</small></div></section>`;
+      <div class="comparison-grid"><p class="own-score"><span>Tavo rezultatas</span><strong>${ownScore} / 100</strong></p><p><span>Grupės vidurkis</span><strong>${groupAverage} / 100</strong></p></div>
+      <div class="comparison-scale" aria-label="Tavo rezultato ir grupės vidurkio skalė nuo 0 iki 100">
+        <div class="comparison-track"><span class="group-marker" style="left:${groupAverage}%" title="Grupės vidurkis: ${groupAverage}"></span><span class="own-marker" style="left:${ownScore}%" title="Tavo rezultatas: ${ownScore}"></span></div>
+        <div class="comparison-scale-labels"><span>0</span><span>100</span></div>
+      </div>
+      <p class="distribution-title">Grupės rezultatų pasiskirstymas</p>
+      <div class="score-distribution">${bands.map((band, index) => `<div class="distribution-band ${index === ownBand ? "active" : ""}"><div class="distribution-bar"><i style="height:${Math.max(8, Math.round((Number(band.count) || 0) / maxBandCount * 100))}%"></i></div><strong>${escapeHtml(band.label)}</strong><span>${Number(band.count) || 0}</span>${index === ownBand ? "<small>Tavo intervalas</small>" : ""}</div>`).join("")}</div>
+      ${percentile > 0 ? `<p class="percentile-copy">Tavo rezultatas aukštesnis už <strong>${percentile} %</strong> dalyvių.</p>` : ""}<small>Testą baigė: ${group.completed_count}</small></div></section>`;
   }
 
   function formatConsumption(value, unit) {
@@ -278,7 +305,7 @@
         ${scoreBar("Valdau elektros vartojimą", result.electricity_management_score)}
         ${result.heating_score !== null ? scoreBar("Suprantu savo šilumos vartojimą", result.heating_score) : ""}
       </section>
-      <section class="result-card self-compare"><div class="result-card-icon">◒</div><div><h2>Tavo vertinimas ir testo balas</h2><p><span>Tavo vertinimas prieš testą</span><strong>${state.selfRating} / 10</strong></p><p><span>Testo rezultatas</span><strong>${Math.round(result.total_score)} / 100</strong></p></div></section>
+      <section class="result-card self-compare"><div class="result-card-icon">◒</div><div><h2>Tavo vertinimas ir testo balas</h2><p><span>Tavo vertinimas prieš testą</span><strong>${state.selfRating} %</strong></p><p><span>Testo rezultatas</span><strong>${Math.round(result.total_score)} / 100</strong></p></div></section>
       <div id="consumption-comparison">${consumptionCard()}</div>
       <div id="group-comparison">${groupCard()}</div>
       <button class="primary-button pdf-button" id="download-pdf-button" type="button"><span aria-hidden="true">↓</span> Atsisiųsti rezultatą PDF</button>
@@ -364,5 +391,4 @@
   window.addEventListener("offline", updateConnection);
   updateConnection(); render();
   if (state.stage === "result") { submitPending(); updateGroupComparison(); }
-  setInterval(updateGroupComparison, Math.max(3000, Number(config.RESULT_REFRESH_INTERVAL) || 5000));
 })();

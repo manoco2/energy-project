@@ -1,6 +1,6 @@
 # Energijos vartojimo sąmoningumo testas
 
-Pilnai veikianti, mobiliesiems pritaikyta statinė internetinė programa gyviems mokymams ir dirbtuvėms. Dalyvis anonimiškai atsako į jam pritaikytus klausimus, gauna normalizuotą 0–100 rezultatą ir, kai testą baigia bent 5 žmonės, palygina jį su grupės vidurkiu. Moderatorius projektoriuje mato grupės rezultatą ir iki 3 daugiausia erdvės tobulėti turinčių klausimų.
+Pilnai veikianti, mobiliesiems pritaikyta statinė internetinė programa gyviems mokymams ir dirbtuvėms. Dalyvis anonimiškai atsako į jam pritaikytus klausimus, gauna normalizuotą 0–100 rezultatą ir, kai testą baigia bent 5 žmonės, palygina jį su grupės vidurkiu. Moderatorius projektoriuje mato grupės vidurkį, 3 geriausiai ir 3 prasčiausiai įvertintus klausimus.
 
 Programa nėra moksliniu požiūriu validuota psichometrinė skalė. Sąsajoje rezultatas vadinamas **„Energijos vartojimo sąmoningumo testo rezultatu“**.
 
@@ -16,7 +16,7 @@ Programa nėra moksliniu požiūriu validuota psichometrinė skalė. Sąsajoje r
   questions.js           Vienintelis klausimų tekstų ir kategorijų šaltinis
   app.js                 Dalyvio eiga, šakojimas ir rezultatų atvaizdavimas
   pdf-export.js          Vieno A4 puslapio rezultatų PDF generavimas telefone
-  results.js             Grupės ekrano automatinis atnaujinimas
+  results.js             Grupės ekrano rankinis atnaujinimas ir PDF snapshot
   supabase-client.js     Saugūs RPC kvietimai ir demonstracinis režimas
   dev-server.mjs         Paprastas vietinis serveris testavimui
   tests/run-tests.mjs    Automatinės šakojimosi ir logikos patikros
@@ -27,8 +27,8 @@ Programa nėra moksliniu požiūriu validuota psichometrinė skalė. Sąsajoje r
 
 ## Kaip veikia programa
 
-1. Dalyvis pasirenka pradinį savęs vertinimą nuo 1 iki 10. Jis į testo balą neįtraukiamas.
-2. Dalyvis atsako į 8 klausimus apie būstą, energijos suvartojimą ir sąskaitų tvarkymą. Pagal šiuos atsakymus sudaromas tik jam taikomų klausimų sąrašas.
+1. Dalyvis slankikliu pasirenka pradinį savęs vertinimą nuo 0 iki 100 %. Jis į testo balą neįtraukiamas.
+2. Dalyvis atsako į 7 klausimus apie būstą, energijos suvartojimą ir sąskaitų tvarkymą. Pagal šiuos atsakymus sudaromas tik jam taikomų klausimų sąrašas.
 3. Visi gauna E1–E9 elektros vartojimo klausimus. H1–H9 klausimai pridedami pagal šildymo būdą, būsto tipą ir temperatūros reguliavimo galimybes.
 4. Atsakymai vertinami: „Taip / reguliariai“ = 2, „Kartais / iš dalies“ = 1, „Ne“ = 0. Leidžiama „Netaikoma“ reikšmė išmetama iš maksimalaus balo.
 5. Serveris iš naujo apskaičiuoja bendrą ir trijų kategorijų balus; frontend perduotu galutiniu balu nepasitikima.
@@ -149,7 +149,7 @@ Iš dalyvio nuorodos sugeneruokite QR kodą. Abiejuose puslapiuose turi būti na
 1. Atlikite testą iki galo ir patikrinkite, ar gaunamas individualus rezultatas.
 2. Atnaujinkite puslapį testo viduryje – turi būti tęsiama nuo tos pačios vietos.
 3. Išjunkite internetą prieš pateikimą – atsakymai turi išlikti telefone ir būti išsiųsti atkūrus ryšį.
-4. Užpildykite testą iš penkių skirtingų naršyklių arba įrenginių – moderatoriaus ekranas turi automatiškai atsirakinti.
+4. Užpildykite testą iš penkių skirtingų naršyklių arba įrenginių, moderatoriaus ekrane paspauskite „Atnaujinti rezultatus“ – turi būti parodytas grupės vidurkis ir klausimų įžvalgos.
 5. Tame pačiame telefone paspauskite „Pradėti iš naujo“ ir pateikite rezultatą dar kartą – dalyvių skaičius neturi padidėti.
 6. Patikrinkite, kad dalyvio ir moderatoriaus URL turi vienodą `event` reikšmę.
 

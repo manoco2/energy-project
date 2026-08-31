@@ -280,5 +280,148 @@
     };
   }
 
-  window.ResultPdf = { buildPdfFromJpeg, createResultData, downloadResultPdf };
+  function createGroupResultData({ summary, updatedAt, questionByCode }) {
+    const updatedDate = new Date(updatedAt || Date.now());
+    const mapQuestions = (items = []) => items.map((item) => ({
+      code: item.question_code,
+      text: questionByCode(item.question_code)?.text || "Klausimo tekstas nerastas",
+      score: Math.round(Number(item.score)),
+      validN: Number(item.valid_n),
+    }));
+    return {
+      unlocked: Boolean(summary.unlocked),
+      overallAverage: summary.overall_average === null || summary.overall_average === undefined ? null : Math.round(Number(summary.overall_average)),
+      selfRatingAverage: summary.self_rating_average === null || summary.self_rating_average === undefined ? null : Math.round(Number(summary.self_rating_average)),
+      completedCount: Number(summary.completed_count) || 0,
+      lowestQuestions: mapQuestions(summary.lowest_questions),
+      highestQuestions: mapQuestions(summary.highest_questions),
+      updatedLabel: updatedDate.toLocaleString("lt-LT", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
+      fileDate: [updatedDate.getFullYear(), String(updatedDate.getMonth() + 1).padStart(2, "0"), String(updatedDate.getDate()).padStart(2, "0")].join("-"),
+    };
+  }
+
+  function drawGroupQuestion(ctx, item, x, y, width, kind, index) {
+    ctx.fillStyle = kind === "strength" ? "#edf6f2" : "#fff8e8";
+    leafRect(ctx, x, y, width, 220, 24);
+    ctx.fill();
+    ctx.fillStyle = kind === "strength" ? COLORS.green : COLORS.yellow;
+    leafRect(ctx, x + 20, y + 20, 54, 54, 14);
+    ctx.fill();
+    ctx.fillStyle = kind === "strength" ? COLORS.white : COLORS.deepGreen;
+    ctx.font = '900 26px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillText(String(index + 1), x + 47, y + 56);
+    ctx.textAlign = "left";
+    ctx.fillStyle = COLORS.green;
+    ctx.font = '900 38px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(`${item.score} / 100`, x + 92, y + 55);
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = '700 18px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("Vidutinis įvertinimas", x + 92, y + 82);
+    ctx.fillStyle = COLORS.ink;
+    ctx.font = '700 21px "Segoe UI", Arial, sans-serif';
+    drawWrapped(ctx, item.text, x + 24, y + 126, width - 48, 27, 3);
+    ctx.fillStyle = COLORS.blue;
+    ctx.font = '700 18px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(`Atsakė: ${item.validN}`, x + 24, y + 199);
+  }
+
+  async function renderGroupCard(data) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1240;
+    canvas.height = 1754;
+    const ctx = canvas.getContext("2d");
+    const logo = await loadLogo();
+    const margin = 70;
+    const contentWidth = canvas.width - margin * 2;
+
+    ctx.fillStyle = COLORS.gray;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = COLORS.white;
+    leafRect(ctx, 38, 38, 1164, 1678, 48);
+    ctx.fill();
+    ctx.drawImage(logo, margin, 68, 330, 110);
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = '600 21px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = "right";
+    ctx.fillText(`Rezultatai atnaujinti: ${data.updatedLabel}`, margin + contentWidth, 112);
+    ctx.fillText(`Dalyvių skaičius: ${data.completedCount}`, margin + contentWidth, 148);
+    ctx.textAlign = "left";
+    ctx.fillStyle = COLORS.yellow;
+    ctx.fillRect(margin, 205, contentWidth, 10);
+    ctx.fillStyle = COLORS.green;
+    ctx.font = '900 48px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("Grupės rezultatai", margin, 280);
+
+    if (!data.unlocked) {
+      ctx.fillStyle = COLORS.green;
+      ctx.font = '800 38px "Segoe UI", Arial, sans-serif';
+      drawWrapped(ctx, "Grupės rezultatai bus rodomi, kai testą baigs bent 5 dalyviai.", margin, 430, contentWidth, 52, 3);
+      return canvas;
+    }
+
+    const summaryY = 330;
+    ctx.fillStyle = COLORS.green;
+    leafRect(ctx, margin, summaryY, contentWidth, 235, 36);
+    ctx.fill();
+    ctx.fillStyle = COLORS.white;
+    ctx.font = '800 25px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("Grupės vidurkis pagal testo atsakymus", margin + 42, summaryY + 58);
+    ctx.font = '900 78px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(`${data.overallAverage} / 100`, margin + 42, summaryY + 148);
+    ctx.fillStyle = COLORS.yellow;
+    ctx.font = '800 25px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("Vidutinis dalyvių savęs vertinimas prieš testą", margin + 590, summaryY + 58);
+    ctx.font = '900 64px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(`${data.selfRatingAverage} %`, margin + 590, summaryY + 143);
+
+    const columnGap = 28;
+    const columnWidth = (contentWidth - columnGap) / 2;
+    const leftX = margin;
+    const rightX = margin + columnWidth + columnGap;
+    const headingY = 640;
+    ctx.fillStyle = COLORS.green;
+    ctx.font = '900 32px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("Kur turime tobulėti?", leftX, headingY);
+    ctx.fillText("Ką geriausiai išmanome?", rightX, headingY);
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = '600 17px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("3 prasčiausiai įvertinti klausimai", leftX, headingY + 30);
+    ctx.fillText("3 geriausiai įvertinti klausimai", rightX, headingY + 30);
+
+    const empty = { text: "Nepakanka bent 5 galiojančių atsakymų.", score: 0, validN: 0 };
+    for (let index = 0; index < 3; index += 1) {
+      drawGroupQuestion(ctx, data.lowestQuestions[index] || empty, leftX, 700 + index * 245, columnWidth, "improvement", index);
+      drawGroupQuestion(ctx, data.highestQuestions[index] || empty, rightX, 700 + index * 245, columnWidth, "strength", index);
+    }
+
+    ctx.strokeStyle = COLORS.line;
+    ctx.beginPath();
+    ctx.moveTo(margin, 1630);
+    ctx.lineTo(margin + contentWidth, 1630);
+    ctx.stroke();
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = '500 18px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("PDF sukurtas iš to paties duomenų snapshot, kuris buvo rodomas rezultatų ekrane.", margin, 1670);
+    return canvas;
+  }
+
+  async function downloadGroupResultPdf(data) {
+    const canvas = await renderGroupCard(data);
+    const jpegBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
+    if (!jpegBlob) throw new Error("Nepavyko paruošti PDF vaizdo.");
+    const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
+    const pdfBytes = buildPdfFromJpeg(jpegBytes, canvas.width, canvas.height);
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `LEA-grupes-rezultatai-${data.fileDate}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  window.ResultPdf = { buildPdfFromJpeg, createResultData, downloadResultPdf, createGroupResultData, downloadGroupResultPdf };
 })();

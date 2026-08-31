@@ -5,7 +5,7 @@ create table if not exists public.workshop_submissions (
   id uuid primary key default gen_random_uuid(),
   workshop_id text not null,
   session_id uuid not null,
-  self_rating smallint not null check (self_rating between 1 and 10),
+  self_rating smallint not null check (self_rating between 0 and 100),
   profile jsonb not null,
   answers jsonb not null,
   total_score numeric(5,2) not null check (total_score between 0 and 100),
@@ -19,6 +19,27 @@ create table if not exists public.workshop_submissions (
   constraint profile_is_object check (jsonb_typeof(profile) = 'object'),
   constraint answers_is_object check (jsonb_typeof(answers) = 'object')
 );
+
+-- Vieną kartą perkelia ankstesnės 1–10 skalės duomenis į 0–100 skalę.
+-- Pakartotinai paleidus visą schemą, jau konvertuoti duomenys nebedauginami.
+do $$
+declare
+  v_definition text;
+begin
+  select pg_get_constraintdef(oid) into v_definition
+  from pg_constraint
+  where conrelid = 'public.workshop_submissions'::regclass
+    and conname = 'workshop_submissions_self_rating_check';
+
+  if v_definition is not null and v_definition like '%self_rating >= 1%' and v_definition like '%self_rating <= 10%' then
+    alter table public.workshop_submissions drop constraint workshop_submissions_self_rating_check;
+    update public.workshop_submissions set self_rating = self_rating * 10;
+    alter table public.workshop_submissions add constraint workshop_submissions_self_rating_check check (self_rating between 0 and 100);
+  elsif v_definition is null then
+    alter table public.workshop_submissions add constraint workshop_submissions_self_rating_check check (self_rating between 0 and 100);
+  end if;
+end;
+$$;
 
 create index if not exists workshop_submissions_workshop_idx
   on public.workshop_submissions (workshop_id, completed_at desc);
@@ -61,13 +82,13 @@ begin
     raise exception 'Netinkamas renginio identifikatorius';
   end if;
   if p_session_id is null then raise exception 'Nenurodyta anoniminė sesija'; end if;
-  if p_self_rating not between 1 and 10 then raise exception 'Savęs vertinimas turi būti nuo 1 iki 10'; end if;
+  if p_self_rating not between 0 and 100 then raise exception 'Savęs vertinimas turi būti nuo 0 iki 100 procentų'; end if;
   if jsonb_typeof(p_profile) <> 'object' then raise exception 'Netinkamas situacijos atsakymų formatas'; end if;
-  if not (p_profile ?& array['S1','S2','S3','S4','S5','S6','S7','S8']) then raise exception 'Trūksta situacijos atsakymų'; end if;
+  if not (p_profile ?& array['S1','S2','S3','S4','S5','S7','S8'])
+     or (select count(*) from jsonb_object_keys(p_profile)) <> 7 then raise exception 'Trūksta situacijos atsakymų arba pateiktas pašalintas klausimas'; end if;
   if p_profile->>'S1' not in ('apartment','house','cottage') then raise exception 'Netinkamas būsto tipas'; end if;
-  if p_profile->>'S2' not in ('district','individual','local','unknown') then raise exception 'Netinkamas šildymo būdas'; end if;
+  if p_profile->>'S2' not in ('district','individual','unknown') then raise exception 'Netinkamas šildymo būdas'; end if;
   if p_profile->>'S3' not in ('yes','no','unknown') then raise exception 'Netinkamas temperatūros reguliavimo atsakymas'; end if;
-  if p_profile->>'S6' not in ('yes','no','unknown') then raise exception 'Netinkamas elektrinio šildymo atsakymas'; end if;
   if p_profile->>'S8' not in ('self','another','varies') then raise exception 'Netinkamas sąskaitų tvarkymo atsakymas'; end if;
 
   begin
@@ -85,7 +106,7 @@ begin
     v_expected := array_append(v_expected, 'H1');
     if p_profile->>'S3' = 'yes' then v_expected := v_expected || array['H2','H3','H4']; end if;
     if p_profile->>'S2' = 'individual' then v_expected := array_append(v_expected, 'H5'); end if;
-    if p_profile->>'S1' = 'apartment' and p_profile->>'S2' in ('district','local') then
+    if p_profile->>'S1' = 'apartment' and p_profile->>'S2' = 'district' then
       v_expected := v_expected || array['H6','H7','H8','H9'];
     end if;
   end if;
@@ -168,14 +189,23 @@ as $$
 declare
   v_count integer;
   v_average numeric;
+  v_self_average numeric;
   v_lowest jsonb;
+  v_highest jsonb;
 begin
   select count(*) into v_count from public.workshop_submissions where workshop_id = p_workshop_id;
   if v_count < 5 then
-    return jsonb_build_object('completed_count', v_count, 'unlocked', false, 'overall_average', null, 'lowest_questions', '[]'::jsonb);
+    return jsonb_build_object(
+      'completed_count', v_count,
+      'unlocked', false,
+      'overall_average', null,
+      'self_rating_average', null,
+      'lowest_questions', '[]'::jsonb,
+      'highest_questions', '[]'::jsonb
+    );
   end if;
 
-  select round(avg(total_score), 0) into v_average
+  select round(avg(total_score), 0), round(avg(self_rating), 0) into v_average, v_self_average
   from public.workshop_submissions where workshop_id = p_workshop_id;
 
   with question_scores as (
@@ -188,13 +218,26 @@ begin
     where submission.workshop_id = p_workshop_id and jsonb_typeof(answer.value) = 'number'
     group by answer.key
     having count(*) >= 5
-    order by score asc, valid_n desc, question_code asc
-    limit 3
   )
-  select coalesce(jsonb_agg(jsonb_build_object('question_code', question_code, 'score', score, 'valid_n', valid_n) order by score, question_code), '[]'::jsonb)
-    into v_lowest from question_scores;
+  select
+    coalesce((
+      select jsonb_agg(jsonb_build_object('question_code', question_code, 'score', score, 'valid_n', valid_n) order by score asc, valid_n desc, question_code asc)
+      from (select * from question_scores order by score asc, valid_n desc, question_code asc limit 3) lowest
+    ), '[]'::jsonb),
+    coalesce((
+      select jsonb_agg(jsonb_build_object('question_code', question_code, 'score', score, 'valid_n', valid_n) order by score desc, valid_n desc, question_code asc)
+      from (select * from question_scores order by score desc, valid_n desc, question_code asc limit 3) highest
+    ), '[]'::jsonb)
+  into v_lowest, v_highest;
 
-  return jsonb_build_object('completed_count', v_count, 'unlocked', true, 'overall_average', v_average, 'lowest_questions', v_lowest);
+  return jsonb_build_object(
+    'completed_count', v_count,
+    'unlocked', true,
+    'overall_average', v_average,
+    'self_rating_average', v_self_average,
+    'lowest_questions', v_lowest,
+    'highest_questions', v_highest
+  );
 end;
 $$;
 
@@ -212,6 +255,7 @@ declare
   v_count integer;
   v_average numeric;
   v_percentile numeric;
+  v_distribution jsonb;
   v_consumption_count integer;
   v_other_per_square_metre numeric;
   v_other_per_household_member numeric;
@@ -222,6 +266,15 @@ begin
 
   select round(avg(total_score), 0), round((count(*) filter (where total_score < p_score))::numeric / v_count * 100, 0)
     into v_average, v_percentile
+  from public.workshop_submissions where workshop_id = p_workshop_id;
+
+  select jsonb_build_array(
+    jsonb_build_object('label', '0–20', 'count', count(*) filter (where total_score between 0 and 20)),
+    jsonb_build_object('label', '21–40', 'count', count(*) filter (where total_score > 20 and total_score <= 40)),
+    jsonb_build_object('label', '41–60', 'count', count(*) filter (where total_score > 40 and total_score <= 60)),
+    jsonb_build_object('label', '61–80', 'count', count(*) filter (where total_score > 60 and total_score <= 80)),
+    jsonb_build_object('label', '81–100', 'count', count(*) filter (where total_score > 80 and total_score <= 100))
+  ) into v_distribution
   from public.workshop_submissions where workshop_id = p_workshop_id;
 
   select
@@ -244,6 +297,7 @@ begin
     'unlocked', true,
     'group_average', v_average,
     'percentile', v_percentile,
+    'score_distribution', v_distribution,
     'consumption_comparison_count', v_consumption_count,
     'other_per_square_metre', v_other_per_square_metre,
     'other_per_household_member', v_other_per_household_member

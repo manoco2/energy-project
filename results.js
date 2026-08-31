@@ -3,6 +3,9 @@
   const config = window.APP_CONFIG;
   const api = window.AssessmentApi;
   let lastSummary = null;
+  let lastUpdatedAt = null;
+  let isRefreshing = false;
+  let pdfStatus = "";
 
   const escapeHtml = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 
@@ -14,65 +17,155 @@
 
   const eventId = workshopId();
 
-  function header(count, mode) {
+  function participantLabel(count) {
+    const value = Number(count) || 0;
+    const lastTwo = value % 100;
+    const last = value % 10;
+    if (lastTwo >= 11 && lastTwo <= 19) return `${value} dalyvių`;
+    if (last === 1) return `${value} dalyvis`;
+    if (last >= 2 && last <= 9) return `${value} dalyviai`;
+    return `${value} dalyvių`;
+  }
+
+  function header(summary) {
+    const countMarkup = summary
+      ? `<small>Testą baigė</small><strong>${participantLabel(summary.completed_count)}</strong>`
+      : `<small>Rezultatų būsena</small><strong>Dar neatnaujinta</strong>`;
     return `<header class="moderator-header">
       <div class="brand"><img src="images/LEA-LOGOTIPAS-ŽALIAS.png" alt="Lietuvos energetikos agentūra" /><strong>Energijos vartojimo sąmoningumo testas</strong></div>
-      <div class="event-meta"><span class="live-dot"></span><div><small>Testą baigė</small><strong>${count} dalyvių</strong></div><em>${mode === "demo" ? "Demonstracinis režimas" : `Renginys: ${escapeHtml(eventId)}`}</em></div>
+      <div class="event-meta"><span class="live-dot ${summary ? "active" : ""}"></span><div>${countMarkup}</div>${summary?.mode === "demo" ? "<em>Demonstracinis režimas</em>" : ""}</div>
     </header>`;
   }
 
-  function waiting(summary) {
-    root.innerHTML = `${header(summary.completed_count, summary.mode)}<section class="waiting-screen">
+  function controls(summary, errorMessage = "") {
+    const updated = lastUpdatedAt && summary
+      ? `Rezultatai atnaujinti ${lastUpdatedAt.toLocaleTimeString("lt-LT", { hour: "2-digit", minute: "2-digit" })} · ${participantLabel(summary.completed_count)}`
+      : "Paspauskite „Atnaujinti rezultatus“, kad gautumėte naujausią duomenų snapshot.";
+    return `<section class="result-controls">
+      <p class="refresh-meta">${escapeHtml(updated)}</p>
+      ${errorMessage ? `<p class="connection-warning">${escapeHtml(errorMessage)}</p>` : ""}
+      <div class="control-buttons">
+        <button class="refresh-button" id="refresh-results" type="button" ${isRefreshing ? "disabled" : ""}>${isRefreshing ? "Atnaujinama..." : "↻ Atnaujinti rezultatus"}</button>
+        <button class="pdf-download-button" id="download-group-pdf" type="button" ${summary && !isRefreshing ? "" : "disabled"}>↓ Atsisiųsti rezultatą PDF</button>
+      </div>
+      <p class="pdf-status" aria-live="polite">${escapeHtml(pdfStatus)}</p>
+    </section>`;
+  }
+
+  function initial(errorMessage = "") {
+    root.innerHTML = `${header(null)}<section class="manual-start">
+      <div class="waiting-symbol" aria-hidden="true"><span>●</span><span>●</span><span>●</span></div>
+      <p>Grupės rezultatų peržiūra</p>
+      <h1>Duomenys gaunami tik rankiniu būdu</h1>
+      <strong>Rezultatai nebus atnaujinami automatiškai.</strong>
+    </section>${controls(null, errorMessage)}<footer>Rodomi tik agreguoti anoniminiai rezultatai.</footer>`;
+    bindControls();
+  }
+
+  function waiting(summary, errorMessage = "") {
+    root.innerHTML = `${header(summary)}<section class="waiting-screen">
       <div class="waiting-symbol" aria-hidden="true"><span>●</span><span>●</span><span>●</span></div>
       <p>Laukiame rezultatų…</p>
       <h1>Testą baigė: ${summary.completed_count}</h1>
       <div class="waiting-track"><span style="width:${Math.min(100, (summary.completed_count / 5) * 100)}%"></span></div>
       <strong>Grupės rezultatai bus rodomi, kai testą baigs bent 5 dalyviai.</strong>
-    </section><footer>${summary.mode === "demo" ? "Prijunkite Supabase bendram kelių įrenginių testavimui." : "Rezultatai atnaujinami automatiškai kas kelias sekundes."}</footer>`;
+    </section>${controls(summary, errorMessage)}<footer>Rodomi tik agreguoti anoniminiai rezultatai.</footer>`;
+    bindControls();
   }
 
-  function weakestCard(item, index) {
+  function questionCard(item, index, kind) {
     const question = window.EnergyAssessment.questionByCode(item.question_code);
-    return `<article class="weak-card">
-      <div class="weak-rank">${index + 1}</div>
-      <div class="weak-score"><strong>${Math.round(Number(item.score))}</strong><span>/ 100</span></div>
-      <div class="weak-copy"><p>${escapeHtml(question?.text || "Klausimo tekstas nerastas")}</p><small>Atsakė: ${Number(item.valid_n)}</small></div>
-      <div class="weak-meter"><span style="width:${Math.round(Number(item.score))}%"></span></div>
+    const score = Math.round(Number(item.score));
+    return `<article class="insight-card ${kind}">
+      <div class="insight-rank">${index + 1}</div>
+      <div class="insight-score"><strong>${score}</strong><span>/ 100</span><small>Vidutinis įvertinimas</small></div>
+      <div class="insight-copy"><p>${escapeHtml(question?.text || "Klausimo tekstas nerastas")}</p><small>Atsakė: ${Number(item.valid_n)}</small></div>
+      <div class="insight-meter"><span style="width:${score}%"></span></div>
     </article>`;
   }
 
-  function unlocked(summary) {
-    const score = Math.round(Number(summary.overall_average));
-    const weakest = summary.lowest_questions || [];
-    root.innerHTML = `${header(summary.completed_count, summary.mode)}<section class="dashboard">
-      <section class="group-score-card">
-        <div class="score-orbit" style="--score:${score}"><div><small>Mūsų grupės rezultatas</small><strong>${score}</strong><span>/ 100</span></div></div>
-        <div class="group-score-copy"><p>Energijos vartojimo sąmoningumo testo rezultatas</p><h1>${summary.completed_count} dalyvių bendras vidurkis</h1><span>Skaičiuojamas atskirų dalyvių normalizuotų rezultatų vidurkis.</span></div>
-      </section>
-      <section class="improvement-section"><header><p>Grupės įžvalga</p><h2>Kur turime daugiausia erdvės tobulėti?</h2><span>Rodomi tik klausimai, į kuriuos atsakė bent 5 dalyviai.</span></header>
-        <div class="weak-list">${weakest.length ? weakest.map(weakestCard).join("") : `<div class="no-weakest">Dar nėra trijų klausimų, turinčių bent 5 galiojančius atsakymus.</div>`}</div>
-      </section>
-    </section><footer>Atnaujinta ${new Date().toLocaleTimeString("lt-LT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · Rodomi tik agreguoti anoniminiai rezultatai</footer>`;
+  function insightSection(title, items, kind) {
+    const empty = "Dar nėra trijų klausimų, turinčių bent 5 galiojančius atsakymus.";
+    return `<section class="insight-section ${kind}"><header><p>Grupės įžvalga</p><h2>${escapeHtml(title)}</h2><span>Rodomi tik klausimai, į kuriuos atsakė bent 5 dalyviai.</span></header>
+      <div class="insight-list">${items.length ? items.map((item, index) => questionCard(item, index, kind)).join("") : `<div class="no-insights">${empty}</div>`}</div>
+    </section>`;
   }
 
-  function render(summary) {
-    if (!summary.unlocked) waiting(summary); else unlocked(summary);
+  function unlocked(summary, errorMessage = "") {
+    const score = Math.round(Number(summary.overall_average));
+    const selfRating = Math.round(Number(summary.self_rating_average));
+    const weakest = summary.lowest_questions || [];
+    const strongest = summary.highest_questions || [];
+    root.innerHTML = `${header(summary)}<section class="dashboard">
+      <section class="group-score-card">
+        <div class="score-orbit" style="--score:${score}"><div><small>Grupės vidurkis</small><strong>${score}</strong><span>/ 100</span></div></div>
+        <div class="group-score-copy"><p>Energijos vartojimo sąmoningumo testo rezultatas</p><h1>${Number(summary.completed_count)} dalyvių bendras vidurkis</h1>
+          <div class="self-rating-average"><span>Vidutinis dalyvių savęs vertinimas prieš testą</span><strong>${selfRating} %</strong></div>
+        </div>
+      </section>
+      <div class="insight-columns">
+        ${insightSection("Kur turime tobulėti?", weakest, "improvement")}
+        ${insightSection("Ką geriausiai išmanome?", strongest, "strength")}
+      </div>
+    </section>${controls(summary, errorMessage)}<footer>Rodomi tik agreguoti anoniminiai rezultatai.</footer>`;
+    bindControls();
+  }
+
+  function render(summary, errorMessage = "") {
+    if (!summary) initial(errorMessage);
+    else if (!summary.unlocked) waiting(summary, errorMessage);
+    else unlocked(summary, errorMessage);
   }
 
   async function refresh() {
+    if (isRefreshing) return;
+    isRefreshing = true;
+    pdfStatus = "";
+    render(lastSummary);
     try {
-      lastSummary = await api.getGroupSummary(eventId);
+      const summary = await api.getGroupSummary(eventId);
+      lastSummary = summary;
+      lastUpdatedAt = new Date();
+      isRefreshing = false;
       render(lastSummary);
     } catch (error) {
-      if (lastSummary) render(lastSummary);
-      const warning = document.createElement("div");
-      warning.className = "connection-warning";
-      warning.textContent = "Nepavyko atnaujinti. Rodomi paskutiniai gauti rezultatai.";
-      root.prepend(warning);
+      isRefreshing = false;
+      render(lastSummary, lastSummary
+        ? "Nepavyko atnaujinti. Rodomi paskutiniai sėkmingai gauti rezultatai."
+        : "Nepavyko gauti rezultatų. Bandykite dar kartą.");
       console.error("Grupės rezultatų klaida:", error);
     }
   }
 
-  refresh();
-  setInterval(refresh, Math.max(3000, Number(config.RESULT_REFRESH_INTERVAL) || 5000));
+  async function downloadPdf() {
+    if (!lastSummary || !lastUpdatedAt) return;
+    const button = document.querySelector("#download-group-pdf");
+    button.disabled = true;
+    pdfStatus = "Ruošiamas PDF iš ekrane rodomų rezultatų…";
+    const status = document.querySelector(".pdf-status");
+    if (status) status.textContent = pdfStatus;
+    try {
+      const data = window.ResultPdf.createGroupResultData({
+        summary: lastSummary,
+        updatedAt: lastUpdatedAt,
+        questionByCode: window.EnergyAssessment.questionByCode,
+      });
+      await window.ResultPdf.downloadGroupResultPdf(data);
+      pdfStatus = "PDF paruoštas ir atsiųstas.";
+    } catch (error) {
+      pdfStatus = "Nepavyko sukurti PDF. Bandykite dar kartą.";
+      console.error("Grupės PDF klaida:", error);
+    } finally {
+      button.disabled = false;
+      const currentStatus = document.querySelector(".pdf-status");
+      if (currentStatus) currentStatus.textContent = pdfStatus;
+    }
+  }
+
+  function bindControls() {
+    document.querySelector("#refresh-results")?.addEventListener("click", refresh);
+    document.querySelector("#download-group-pdf")?.addEventListener("click", downloadPdf);
+  }
+
+  render(null);
 })();
