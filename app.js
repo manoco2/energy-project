@@ -220,10 +220,76 @@
     return `<div class="category-score"><div><span>${escapeHtml(label)}</span><strong>${Math.round(score)} / 100</strong></div><i><span style="width:${Math.round(score)}%"></span></i></div>`;
   }
 
+  function smoothDistributionPath(points) {
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const p0 = points[index - 1] || points[index];
+      const p1 = points[index];
+      const p2 = points[index + 1];
+      const p3 = points[index + 2] || p2;
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x} ${p2.y}`;
+    }
+    return path;
+  }
+
+  function distributionChart(bands, ownScore, groupAverage) {
+    const left = 56;
+    const right = 944;
+    const baseline = 246;
+    const maxBandCount = Math.max(1, ...bands.map((band) => Number(band.count) || 0));
+    const samples = [
+      { score: 0, count: 0 },
+      ...bands.map((band, index) => ({ score: 10 + index * 20, count: Number(band.count) || 0 })),
+      { score: 100, count: 0 },
+    ];
+    const xAt = (score) => left + (right - left) * Math.max(0, Math.min(100, score)) / 100;
+    const yAtCount = (count) => baseline - 16 - (count / maxBandCount) * 142;
+    const points = samples.map((sample) => ({ x: Math.round(xAt(sample.score)), y: Math.round(yAtCount(sample.count)) }));
+    const linePath = smoothDistributionPath(points);
+    const countAt = (score) => {
+      const safeScore = Math.max(0, Math.min(100, score));
+      const upperIndex = samples.findIndex((sample) => sample.score >= safeScore);
+      if (upperIndex <= 0) return samples[0].count;
+      const lower = samples[upperIndex - 1];
+      const upper = samples[upperIndex];
+      const ratio = (safeScore - lower.score) / (upper.score - lower.score || 1);
+      return lower.count + (upper.count - lower.count) * ratio;
+    };
+    const marker = (score, className) => {
+      const x = xAt(score).toFixed(1);
+      const y = yAtCount(countAt(score)).toFixed(1);
+      return `<line class="${className}-line" x1="${x}" y1="42" x2="${x}" y2="${y}" /><circle class="${className}-dot" cx="${x}" cy="${y}" r="10" />`;
+    };
+    const axisTicks = [0, 20, 40, 60, 80, 100].map((value) => {
+      const x = xAt(value).toFixed(1);
+      return `<line class="axis-tick" x1="${x}" y1="246" x2="${x}" y2="257" /><text class="axis-label" x="${x}" y="282" text-anchor="middle">${value}</text>`;
+    }).join("");
+    const distributionLabel = bands.map((band) => `${band.label}: ${Number(band.count) || 0}`).join(", ");
+    return `<figure class="distribution-chart" aria-label="Grupės rezultatų pasiskirstymas. ${escapeHtml(distributionLabel)}. Tavo rezultatas ${ownScore} iš 100, grupės vidurkis ${groupAverage} iš 100.">
+      <svg viewBox="0 0 1000 292" role="img" aria-hidden="true">
+        <defs><linearGradient id="distribution-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#7db8d5" stop-opacity=".48"/><stop offset="1" stop-color="#dceff6" stop-opacity=".12"/></linearGradient></defs>
+        <path class="distribution-area" d="${linePath} L ${right} ${baseline} L ${left} ${baseline} Z" />
+        <path class="distribution-line" d="${linePath}" />
+        <line class="chart-axis" x1="${left}" y1="${baseline}" x2="${right}" y2="${baseline}" />
+        ${axisTicks}
+        ${marker(groupAverage, "group-average")}
+        ${marker(ownScore, "own-average")}
+      </svg>
+      <figcaption class="distribution-legend">
+        <span class="group-average-legend"><i></i>Grupės vidurkis <strong>${groupAverage} / 100</strong></span>
+        <span class="own-average-legend"><i></i>Mano rezultatas <strong>${ownScore} / 100</strong></span>
+      </figcaption>
+    </figure>`;
+  }
+
   function groupCard() {
     const group = state.groupComparison;
     if (!group || !group.unlocked) {
-      return `<section class="result-card group-card locked"><div class="result-card-icon">●●●</div><div><h2>Palyginimas su grupe</h2><p>Grupės palyginimas bus rodomas, kai testą baigs bent 5 dalyviai.</p></div></section>`;
+      return `<section class="result-card group-card locked"><h2>Palyginimas su grupe</h2><p>Grupės palyginimas bus rodomas, kai testą baigs bent 5 dalyviai.</p></section>`;
     }
     const ownScore = Math.round(Number(state.result.total_score));
     const groupAverage = Math.round(Number(group.group_average));
@@ -237,17 +303,10 @@
           { label: "61–80", count: 0 },
           { label: "81–100", count: 0 },
         ];
-    const ownBand = ownScore <= 20 ? 0 : ownScore <= 40 ? 1 : ownScore <= 60 ? 2 : ownScore <= 80 ? 3 : 4;
-    const maxBandCount = Math.max(1, ...bands.map((band) => Number(band.count) || 0));
-    return `<section class="result-card group-card"><div class="result-card-icon">↗</div><div><h2>Palyginimas su grupe</h2>
-      <div class="comparison-grid"><p class="own-score"><span>Tavo rezultatas</span><strong>${ownScore} / 100</strong></p><p><span>Grupės vidurkis</span><strong>${groupAverage} / 100</strong></p></div>
-      <div class="comparison-scale" aria-label="Tavo rezultato ir grupės vidurkio skalė nuo 0 iki 100">
-        <div class="comparison-track"><span class="group-marker" style="left:${groupAverage}%" title="Grupės vidurkis: ${groupAverage}"></span><span class="own-marker" style="left:${ownScore}%" title="Tavo rezultatas: ${ownScore}"></span></div>
-        <div class="comparison-scale-labels"><span>0</span><span>100</span></div>
-      </div>
-      <p class="distribution-title">Grupės rezultatų pasiskirstymas</p>
-      <div class="score-distribution">${bands.map((band, index) => `<div class="distribution-band ${index === ownBand ? "active" : ""}"><div class="distribution-bar"><i style="height:${Math.max(8, Math.round((Number(band.count) || 0) / maxBandCount * 100))}%"></i></div><strong>${escapeHtml(band.label)}</strong><span>${Number(band.count) || 0}</span>${index === ownBand ? "<small>Tavo intervalas</small>" : ""}</div>`).join("")}</div>
-      ${percentile > 0 ? `<p class="percentile-copy">Tavo rezultatas aukštesnis už <strong>${percentile} %</strong> dalyvių.</p>` : ""}<small>Testą baigė: ${group.completed_count}</small></div></section>`;
+    return `<section class="result-card group-card"><h2>Palyginimas su grupe</h2>
+      ${distributionChart(bands, ownScore, groupAverage)}
+      <div class="comparison-summary">${percentile > 0 ? `<p class="percentile-copy">Tavo rezultatas aukštesnis už <strong>${percentile} %</strong> dalyvių.</p>` : ""}<small>Testą baigė: ${group.completed_count}</small></div>
+    </section>`;
   }
 
   function formatConsumption(value, unit) {
@@ -305,9 +364,11 @@
         ${scoreBar("Valdau elektros vartojimą", result.electricity_management_score)}
         ${result.heating_score !== null ? scoreBar("Suprantu savo šilumos vartojimą", result.heating_score) : ""}
       </section>
-      <section class="result-card self-compare"><div class="result-card-icon">◒</div><div><h2>Tavo vertinimas ir testo balas</h2><p><span>Tavo vertinimas prieš testą</span><strong>${state.selfRating} %</strong></p><p><span>Testo rezultatas</span><strong>${Math.round(result.total_score)} / 100</strong></p></div></section>
+      <section class="result-card self-compare"><h2>Tavo vertinimas ir testo balas</h2><div class="self-compare-values"><p><span>Tavo vertinimas prieš testą</span><strong>${state.selfRating} / 100</strong></p><p><span>Testo rezultatas</span><strong>${Math.round(result.total_score)} / 100</strong></p></div></section>
       <div id="consumption-comparison">${consumptionCard()}</div>
       <div id="group-comparison">${groupCard()}</div>
+      <button class="secondary-button refresh-data-button" id="refresh-data-button" type="button">↻ Atnaujinti duomenis</button>
+      <p class="data-refresh-status" id="data-refresh-status" aria-live="polite"></p>
       <button class="primary-button pdf-button" id="download-pdf-button" type="button"><span aria-hidden="true">↓</span> Atsisiųsti rezultatą PDF</button>
       <p class="pdf-status" id="pdf-status" aria-live="polite"></p>
       <button class="secondary-button restart-button" id="restart-button" type="button">↻ Pradėti iš naujo</button>
@@ -318,7 +379,20 @@
       const sameSession = state.sessionId;
       state = freshState(); state.sessionId = sameSession; save(); render();
     });
+    document.querySelector("#refresh-data-button").addEventListener("click", refreshIndividualData);
     document.querySelector("#download-pdf-button").addEventListener("click", downloadPdf);
+  }
+
+  async function refreshIndividualData() {
+    const button = document.querySelector("#refresh-data-button");
+    const status = document.querySelector("#data-refresh-status");
+    button.disabled = true;
+    status.textContent = "Duomenys atnaujinami…";
+    const updated = await updateGroupComparison();
+    const currentButton = document.querySelector("#refresh-data-button");
+    const currentStatus = document.querySelector("#data-refresh-status");
+    if (currentButton) currentButton.disabled = false;
+    if (currentStatus) currentStatus.textContent = updated ? "Duomenys atnaujinti." : "Nepavyko atnaujinti duomenų. Bandykite dar kartą.";
   }
 
   async function downloadPdf() {
@@ -374,7 +448,11 @@
       if (container) container.innerHTML = groupCard();
       const consumptionContainer = document.querySelector("#consumption-comparison");
       if (consumptionContainer) consumptionContainer.innerHTML = consumptionCard();
-    } catch (error) { console.warn("Nepavyko atnaujinti grupės palyginimo:", error.message); }
+      return true;
+    } catch (error) {
+      console.warn("Nepavyko atnaujinti grupės palyginimo:", error.message);
+      return false;
+    }
   }
 
   function updateConnection() {

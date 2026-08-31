@@ -53,10 +53,26 @@
   function calculateDemoSummary(workshopId) {
     const submissions = demoForWorkshop(workshopId);
     const completedCount = submissions.length;
-    if (completedCount < 5) return { completed_count: completedCount, unlocked: false, overall_average: null, self_rating_average: null, lowest_questions: [], highest_questions: [] };
+    if (completedCount < 5) return {
+      completed_count: completedCount,
+      unlocked: false,
+      overall_average: null,
+      self_rating_average: null,
+      electricity_awareness_average: null,
+      electricity_management_average: null,
+      heating_average: null,
+      lowest_questions: [],
+      highest_questions: [],
+    };
 
     const overallAverage = Math.round(submissions.reduce((sum, item) => sum + Number(item.total_score), 0) / completedCount);
     const selfRatingAverage = Math.round(submissions.reduce((sum, item) => sum + Number(item.self_rating), 0) / completedCount);
+    const awarenessAverage = Math.round(submissions.reduce((sum, item) => sum + Number(item.electricity_awareness_score), 0) / completedCount);
+    const managementAverage = Math.round(submissions.reduce((sum, item) => sum + Number(item.electricity_management_score), 0) / completedCount);
+    const heatingScores = submissions.map((item) => item.heating_score).filter((value) => value !== null && value !== undefined);
+    const heatingAverage = heatingScores.length
+      ? Math.round(heatingScores.reduce((sum, value) => sum + Number(value), 0) / heatingScores.length)
+      : null;
     const questionScores = window.EnergyAssessment.QUESTIONS.map((question) => {
       const values = submissions.map((item) => item.answers?.[question.code]).filter((value) => value !== null && value !== undefined);
       return { question_code: question.code, valid_n: values.length, score: values.length ? Math.round((values.reduce((sum, value) => sum + Number(value), 0) / (values.length * 2)) * 100) : null };
@@ -64,7 +80,17 @@
     const lowestQuestions = [...questionScores].sort((a, b) => a.score - b.score || b.valid_n - a.valid_n || a.question_code.localeCompare(b.question_code)).slice(0, 3);
     const highestQuestions = [...questionScores].sort((a, b) => b.score - a.score || b.valid_n - a.valid_n || a.question_code.localeCompare(b.question_code)).slice(0, 3);
 
-    return { completed_count: completedCount, unlocked: true, overall_average: overallAverage, self_rating_average: selfRatingAverage, lowest_questions: lowestQuestions, highest_questions: highestQuestions };
+    return {
+      completed_count: completedCount,
+      unlocked: true,
+      overall_average: overallAverage,
+      self_rating_average: selfRatingAverage,
+      electricity_awareness_average: awarenessAverage,
+      electricity_management_average: managementAverage,
+      heating_average: heatingAverage,
+      lowest_questions: lowestQuestions,
+      highest_questions: highestQuestions,
+    };
   }
 
   async function submitAssessment(payload, clientScores) {

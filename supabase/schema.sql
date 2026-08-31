@@ -190,6 +190,9 @@ declare
   v_count integer;
   v_average numeric;
   v_self_average numeric;
+  v_awareness_average numeric;
+  v_management_average numeric;
+  v_heating_average numeric;
   v_lowest jsonb;
   v_highest jsonb;
 begin
@@ -200,12 +203,21 @@ begin
       'unlocked', false,
       'overall_average', null,
       'self_rating_average', null,
+      'electricity_awareness_average', null,
+      'electricity_management_average', null,
+      'heating_average', null,
       'lowest_questions', '[]'::jsonb,
       'highest_questions', '[]'::jsonb
     );
   end if;
 
-  select round(avg(total_score), 0), round(avg(self_rating), 0) into v_average, v_self_average
+  select
+    round(avg(total_score), 0),
+    round(avg(self_rating), 0),
+    round(avg(electricity_awareness_score), 0),
+    round(avg(electricity_management_score), 0),
+    round(avg(heating_score), 0)
+  into v_average, v_self_average, v_awareness_average, v_management_average, v_heating_average
   from public.workshop_submissions where workshop_id = p_workshop_id;
 
   with question_scores as (
@@ -235,6 +247,9 @@ begin
     'unlocked', true,
     'overall_average', v_average,
     'self_rating_average', v_self_average,
+    'electricity_awareness_average', v_awareness_average,
+    'electricity_management_average', v_management_average,
+    'heating_average', v_heating_average,
     'lowest_questions', v_lowest,
     'highest_questions', v_highest
   );

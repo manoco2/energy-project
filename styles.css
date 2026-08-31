@@ -156,35 +156,31 @@ h1 { margin: 0; max-width: 29rem; color: var(--lea-green); font-size: clamp(2rem
 .category-score strong { color: var(--lea-green); font-size: 0.88rem; white-space: nowrap; }
 .category-score > i { height: 0.55rem; margin-top: 0.4rem; display: block; overflow: hidden; border-radius: 999px; background: #dfe8ea; }
 .category-score > i > span { height: 100%; display: block; border-radius: inherit; background: linear-gradient(90deg, var(--lea-blue), var(--lea-green)); }
-.self-compare, .group-card { display: grid; grid-template-columns: 2.8rem 1fr; gap: 0.8rem; }
-.result-card-icon { width: 2.8rem; height: 2.8rem; border-radius: 0 0.9rem 0 0.9rem; display: grid; place-items: center; color: var(--lea-green); background: var(--lea-yellow); font-size: 0.72rem; font-weight: 900; }
-.self-compare p { margin: 0.45rem 0; display: flex; justify-content: space-between; gap: 0.75rem; color: var(--muted); }
+.self-compare { display: block; }
+.self-compare-values { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
+.self-compare p { margin: 0; padding: 0.8rem; border: 1px solid var(--line); border-radius: 0 0.75rem 0 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; color: var(--muted); background: #f7fafb; }
+.self-compare p span { font-size: 0.72rem; }
 .self-compare p strong { color: var(--lea-green); white-space: nowrap; }
 .group-card.locked { background: #f7fafb; }
 .group-card p { margin: 0.4rem 0; color: var(--muted); line-height: 1.45; }
 .group-card small { color: var(--lea-blue); font-weight: 800; }
-.comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-.comparison-grid p { padding: 0.7rem; border-radius: 0 0.75rem 0 0.75rem; display: grid; background: var(--lea-gray); }
-.comparison-grid .own-score { color: var(--white); background: var(--lea-green); }
-.comparison-grid span { font-size: 0.7rem; }
-.comparison-grid strong { color: var(--lea-green); font-size: 1.05rem; }
-.comparison-grid .own-score strong { color: var(--white); }
-.comparison-scale { margin: 1.2rem 0 0.9rem; }
-.comparison-track { height: 0.65rem; position: relative; border-radius: 999px; background: linear-gradient(90deg, #dce8eb, #a9ccd7); }
-.comparison-track span { position: absolute; top: 50%; border-radius: 50%; transform: translate(-50%, -50%); }
-.group-marker { width: 1rem; height: 1rem; border: 0.2rem solid var(--white); background: var(--lea-blue); box-shadow: 0 0 0 2px var(--lea-blue); }
-.own-marker { width: 1.35rem; height: 1.35rem; border: 0.25rem solid var(--white); background: var(--lea-yellow); box-shadow: 0 0 0 3px var(--lea-green); }
-.comparison-scale-labels { margin-top: 0.45rem; display: flex; justify-content: space-between; color: var(--muted); font-size: 0.68rem; }
-.distribution-title { margin-top: 1rem !important; color: var(--ink) !important; font-size: 0.75rem; font-weight: 800; }
-.score-distribution { height: 8rem; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.35rem; align-items: end; }
-.distribution-band { min-width: 0; display: grid; grid-template-rows: 4rem auto auto 1.5rem; gap: 0.2rem; color: var(--muted); text-align: center; }
-.distribution-bar { height: 4rem; display: flex; align-items: end; justify-content: center; border-radius: 0.35rem 0.35rem 0 0; overflow: hidden; background: #edf2f3; }
-.distribution-bar i { width: 100%; min-height: 0.35rem; display: block; background: #9ec2ce; }
-.distribution-band.active .distribution-bar { box-shadow: 0 0 0 2px var(--lea-yellow); }
-.distribution-band.active .distribution-bar i { background: var(--lea-green); }
-.distribution-band strong { color: var(--ink); font-size: 0.62rem; }
-.distribution-band > span { font-size: 0.68rem; }
-.distribution-band small { align-self: start; color: var(--lea-green); font-size: 0.54rem; line-height: 1.05; }
+.distribution-chart { margin: 0; padding: 0.45rem 0 0; }
+.distribution-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.distribution-area { fill: url(#distribution-fill); }
+.distribution-line { fill: none; stroke: var(--lea-blue); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.chart-axis { stroke: #91a5aa; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.axis-tick { stroke: #91a5aa; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.axis-label { fill: var(--muted); font: 600 25px "Segoe UI", Arial, sans-serif; }
+.group-average-line { stroke: #6c7788; stroke-width: 3; stroke-dasharray: 7 7; vector-effect: non-scaling-stroke; }
+.own-average-line { stroke: var(--lea-green); stroke-width: 4; vector-effect: non-scaling-stroke; }
+.group-average-dot { fill: #6c7788; stroke: var(--white); stroke-width: 5; vector-effect: non-scaling-stroke; }
+.own-average-dot { fill: var(--lea-yellow); stroke: var(--lea-green); stroke-width: 5; vector-effect: non-scaling-stroke; }
+.distribution-legend { margin-top: 0.2rem; display: flex; flex-wrap: wrap; gap: 0.55rem 1rem; }
+.distribution-legend span { display: inline-flex; align-items: center; gap: 0.38rem; color: var(--muted); font-size: 0.72rem; }
+.distribution-legend i { width: 0.75rem; height: 0.75rem; border-radius: 50%; background: #6c7788; }
+.distribution-legend .own-average-legend i { border: 2px solid var(--lea-green); background: var(--lea-yellow); }
+.distribution-legend strong { color: var(--lea-green); font-size: 0.78rem; white-space: nowrap; }
+.comparison-summary { margin-top: 0.6rem; display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
 .percentile-copy strong { color: var(--lea-green); }
 .consumption-card h2 { margin-bottom: 0.4rem; }
 .consumption-intro { margin: 0 0 0.9rem; color: var(--muted); font-size: 0.78rem; line-height: 1.45; }
@@ -199,9 +195,13 @@ h1 { margin: 0; max-width: 29rem; color: var(--lea-green); font-size: clamp(2rem
 .consumption-card small { display: block; margin-top: 0.65rem; color: var(--lea-blue); font-size: 0.7rem; line-height: 1.4; }
 .pdf-button { margin-top: 1.05rem; }
 .pdf-status { min-height: 1.2rem; margin: 0.45rem 0 0; color: var(--lea-blue); font-size: 0.75rem; font-weight: 750; text-align: center; }
+.refresh-data-button { width: 100%; margin-top: 1.05rem; }
+.data-refresh-status { min-height: 1.2rem; margin: 0.45rem 0 0; color: var(--lea-blue); font-size: 0.75rem; font-weight: 750; text-align: center; }
 .restart-button { margin-top: 0.45rem; }
 
 @media (max-width: 420px) {
+  .self-compare-values { grid-template-columns: 1fr; }
+  .comparison-summary { align-items: flex-start; flex-direction: column; }
   .consumption-heading { display: none; }
   .consumption-row { grid-template-columns: 1fr 1fr; }
   .consumption-row > span { grid-column: 1 / -1; padding-bottom: 0.45rem; color: var(--ink); background: #e7eef0; font-weight: 800; }

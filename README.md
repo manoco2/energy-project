@@ -16,7 +16,7 @@ Programa nėra moksliniu požiūriu validuota psichometrinė skalė. Sąsajoje r
   questions.js           Vienintelis klausimų tekstų ir kategorijų šaltinis
   app.js                 Dalyvio eiga, šakojimas ir rezultatų atvaizdavimas
   pdf-export.js          Vieno A4 puslapio rezultatų PDF generavimas telefone
-  results.js             Grupės ekrano rankinis atnaujinimas ir PDF snapshot
+  results.js             Grupės ekrano rankinis atnaujinimas
   supabase-client.js     Saugūs RPC kvietimai ir demonstracinis režimas
   dev-server.mjs         Paprastas vietinis serveris testavimui
   tests/run-tests.mjs    Automatinės šakojimosi ir logikos patikros
@@ -33,8 +33,8 @@ Programa nėra moksliniu požiūriu validuota psichometrinė skalė. Sąsajoje r
 4. Atsakymai vertinami: „Taip / reguliariai“ = 2, „Kartais / iš dalies“ = 1, „Ne“ = 0. Leidžiama „Netaikoma“ reikšmė išmetama iš maksimalaus balo.
 5. Serveris iš naujo apskaičiuoja bendrą ir trijų kategorijų balus; frontend perduotu galutiniu balu nepasitikima.
 6. Tas pats `workshop_id + session_id` pateikimas atnaujinamas, todėl pakartotinis testas nepadidina dalyvių skaičiaus.
-7. Kai renginyje yra bent 5 baigti testai, atrakinamas grupės vidurkis, dalyvio percentilis ir moderatoriaus analitika. Individualiame rezultate taip pat palyginamas mėnesio elektros suvartojimas vienam būsto kvadratiniam metrui ir vienam namų ūkio nariui su kitų dalyvių vidurkiu.
-8. Dalyvis gali atsisiųsti vieno puslapio PDF kortelę su LEA logotipu, atlikimo data, bendru balu, kategorijų rezultatais ir elektros suvartojimo palyginimu. PDF sukuriamas lokaliai telefone, nesiunčiant papildomų duomenų į išorinę paslaugą.
+7. Kai renginyje yra bent 5 baigti testai, atrakinamas grupės vidurkis, dalyvio percentilis, rezultatų pasiskirstymas ir moderatoriaus analitika. Individualiame rezultate taip pat palyginamas mėnesio elektros suvartojimas vienam būsto kvadratiniam metrui ir vienam namų ūkio nariui su kitų dalyvių vidurkiu.
+8. Dalyvis gali rankiniu būdu atnaujinti grupės palyginimą ir atsisiųsti vieno puslapio PDF kortelę su LEA logotipu, atlikimo data, bendru balu, kategorijų rezultatais, grupės bei elektros suvartojimo palyginimu. PDF sukuriamas lokaliai telefone, nesiunčiant papildomų duomenų į išorinę paslaugą.
 
 ## 1. Sukurti Supabase projektą
 
@@ -140,7 +140,7 @@ Iš dalyvio nuorodos sugeneruokite QR kodą. Abiejuose puslapiuose turi būti na
 - Nerenkamas vardas, pavardė, el. paštas, telefono numeris ar prisijungimo duomenys.
 - Atsitiktinis `session_id` saugomas tik naršyklės `localStorage` ir siunčiamas dubliavimosi prevencijai.
 - Situacijos duomenys ir atsakymai saugomi Supabase, bet jų negalima viešai tiesiogiai `SELECT`-inti.
-- `results.html` gauna tik dalyvių skaičių, grupės vidurkį ir iki 3 agreguotų klausimų rezultatų.
+- `results.html` gauna tik dalyvių skaičių, bendrą bei temų grupės vidurkius ir iki 3 agreguotų klausimų rezultatų.
 - Individualus palyginimo RPC negrąžina kitų dalyvių įrašų: tik balų ir energijos suvartojimo agreguotus vidurkius. Suvartojimo vidurkis rodomas tik turint bent 4 kitų dalyvių galiojančius duomenis.
 - Nėra Google Analytics, Meta Pixel, reklamos ar kitų sekimo priemonių.
 

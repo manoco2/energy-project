@@ -147,81 +147,114 @@
     ctx.fillRect(x, 218, width, 12);
 
     ctx.fillStyle = COLORS.green;
-    ctx.font = '800 50px "Segoe UI", Arial, sans-serif';
-    ctx.fillText("Jūsų testo rezultatas", x, 305);
+    ctx.font = '800 48px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("Jūsų testo rezultatas", x, 295);
 
     const scoreGradient = ctx.createLinearGradient(x, 0, x + width, 0);
     scoreGradient.addColorStop(0, COLORS.green);
     scoreGradient.addColorStop(1, COLORS.blue);
     ctx.fillStyle = scoreGradient;
-    leafRect(ctx, x, 350, width, 285, 44);
+    leafRect(ctx, x, 330, width, 250, 44);
     ctx.fill();
     ctx.fillStyle = COLORS.yellow;
     ctx.beginPath();
-    ctx.arc(258, 492, 103, 0, Math.PI * 2);
+    ctx.arc(250, 455, 88, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = COLORS.deepGreen;
     ctx.beginPath();
-    ctx.arc(258, 492, 82, 0, Math.PI * 2);
+    ctx.arc(250, 455, 70, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = COLORS.white;
     ctx.textAlign = "center";
-    ctx.font = '900 76px "Segoe UI", Arial, sans-serif';
-    ctx.fillText(String(Math.round(Number(data.totalScore))), 258, 504);
-    ctx.font = '700 23px "Segoe UI", Arial, sans-serif';
-    ctx.fillText("/ 100", 258, 542);
+    ctx.font = '900 64px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(String(Math.round(Number(data.totalScore))), 250, 466);
+    ctx.font = '700 21px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("/ 100", 250, 502);
     ctx.textAlign = "left";
     ctx.fillStyle = "#cfe9f1";
-    ctx.font = '800 23px "Segoe UI", Arial, sans-serif';
-    ctx.fillText("BENDRAS BALAS", 430, 435);
+    ctx.font = '800 21px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("BENDRAS BALAS", 410, 405);
     ctx.fillStyle = COLORS.white;
-    ctx.font = '800 41px "Segoe UI", Arial, sans-serif';
-    drawWrapped(ctx, "Energijos vartojimo sąmoningumo testo rezultatas", 430, 492, 630, 50, 3);
+    ctx.font = '800 37px "Segoe UI", Arial, sans-serif';
+    drawWrapped(ctx, "Energijos vartojimo sąmoningumo testo rezultatas", 410, 458, 650, 45, 3);
 
     ctx.fillStyle = COLORS.green;
-    ctx.font = '800 36px "Segoe UI", Arial, sans-serif';
-    ctx.fillText("Rezultatas pagal temas", x, 710);
-    data.categories.forEach((category, index) => scoreRow(ctx, category.label, category.score, x, 770 + index * 92, width));
+    ctx.font = '800 34px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("Rezultatas pagal temas", x, 650);
+    data.categories.forEach((category, index) => scoreRow(ctx, category.label, category.score, x, 705 + index * 72, width));
 
     const categoryCount = data.categories.length;
-    const consumptionY = 770 + categoryCount * 92 + 40;
+    const comparisonHeadingY = 705 + categoryCount * 72 + 32;
     ctx.fillStyle = COLORS.green;
-    ctx.font = '800 36px "Segoe UI", Arial, sans-serif';
+    ctx.font = '800 34px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("Palyginimas su grupe", x, comparisonHeadingY);
+    const comparisonBoxY = comparisonHeadingY + 24;
+    if (data.scoreComparison.unlocked) {
+      ctx.fillStyle = COLORS.green;
+      leafRect(ctx, x, comparisonBoxY, width, 132, 28);
+      ctx.fill();
+      const comparisonColumns = [x + 34, x + 390, x + 746];
+      const comparisonLabels = ["Jūsų rezultatas", "Grupės vidurkis", "Aukštesnis rezultatas nei"];
+      const comparisonValues = [
+        `${data.scoreComparison.ownScore} / 100`,
+        `${data.scoreComparison.groupAverage} / 100`,
+        data.scoreComparison.percentile > 0 ? `${data.scoreComparison.percentile} % dalyvių` : "—",
+      ];
+      comparisonColumns.forEach((columnX, index) => {
+        ctx.fillStyle = "#cfe5e8";
+        ctx.font = '700 20px "Segoe UI", Arial, sans-serif';
+        ctx.fillText(comparisonLabels[index], columnX, comparisonBoxY + 42);
+        ctx.fillStyle = index === 0 ? COLORS.yellow : COLORS.white;
+        ctx.font = '900 34px "Segoe UI", Arial, sans-serif';
+        ctx.fillText(comparisonValues[index], columnX, comparisonBoxY + 91);
+      });
+    } else {
+      ctx.fillStyle = COLORS.gray;
+      leafRect(ctx, x, comparisonBoxY, width, 132, 28);
+      ctx.fill();
+      ctx.fillStyle = COLORS.muted;
+      ctx.font = '700 24px "Segoe UI", Arial, sans-serif';
+      drawWrapped(ctx, "Grupės palyginimas bus rodomas, kai testą baigs bent 5 dalyviai.", x + 28, comparisonBoxY + 56, width - 56, 32, 2);
+    }
+
+    const consumptionY = comparisonBoxY + 190;
+    ctx.fillStyle = COLORS.green;
+    ctx.font = '800 34px "Segoe UI", Arial, sans-serif';
     ctx.fillText("Elektros energijos suvartojimas per mėnesį", x, consumptionY);
     ctx.fillStyle = COLORS.muted;
-    ctx.font = '500 23px "Segoe UI", Arial, sans-serif';
-    drawWrapped(ctx, "Palyginimas pagal nurodytą būsto plotą, namų ūkio dydį ir vidutinį elektros energijos suvartojimą.", x, consumptionY + 42, width, 31, 2);
+    ctx.font = '500 21px "Segoe UI", Arial, sans-serif';
+    drawWrapped(ctx, "Palyginimas pagal nurodytą būsto plotą, namų ūkio dydį ir vidutinį elektros energijos suvartojimą.", x, consumptionY + 38, width, 28, 2);
 
-    const tableY = consumptionY + 108;
+    const tableY = consumptionY + 92;
     const columns = [480, 235, 357];
     ctx.fillStyle = COLORS.green;
-    ctx.fillRect(x, tableY, width, 70);
+    ctx.fillRect(x, tableY, width, 58);
     ctx.fillStyle = COLORS.white;
-    ctx.font = '700 21px "Segoe UI", Arial, sans-serif';
-    ctx.fillText("Rodiklis", x + 22, tableY + 43);
-    ctx.fillText("Jūs", x + columns[0] + 22, tableY + 43);
-    ctx.fillText("Kiti dalyviai vidutiniškai", x + columns[0] + columns[1] + 22, tableY + 43);
+    ctx.font = '700 19px "Segoe UI", Arial, sans-serif';
+    ctx.fillText("Rodiklis", x + 22, tableY + 37);
+    ctx.fillText("Jūs", x + columns[0] + 22, tableY + 37);
+    ctx.fillText("Kiti dalyviai vidutiniškai", x + columns[0] + columns[1] + 22, tableY + 37);
 
     data.consumptionRows.forEach((row, index) => {
-      const rowY = tableY + 70 + index * 112;
+      const rowY = tableY + 58 + index * 88;
       ctx.fillStyle = index % 2 ? COLORS.white : COLORS.gray;
-      ctx.fillRect(x, rowY, width, 112);
+      ctx.fillRect(x, rowY, width, 88);
       ctx.strokeStyle = COLORS.line;
       ctx.lineWidth = 2;
-      ctx.strokeRect(x, rowY, width, 112);
+      ctx.strokeRect(x, rowY, width, 88);
       ctx.fillStyle = COLORS.ink;
-      ctx.font = '700 24px "Segoe UI", Arial, sans-serif';
-      drawWrapped(ctx, row.label, x + 22, rowY + 39, columns[0] - 44, 29, 2);
+      ctx.font = '700 21px "Segoe UI", Arial, sans-serif';
+      drawWrapped(ctx, row.label, x + 22, rowY + 32, columns[0] - 44, 25, 2);
       ctx.fillStyle = COLORS.green;
-      ctx.font = '800 24px "Segoe UI", Arial, sans-serif';
-      drawWrapped(ctx, row.own, x + columns[0] + 22, rowY + 39, columns[1] - 40, 29, 2);
-      drawWrapped(ctx, row.others, x + columns[0] + columns[1] + 22, rowY + 39, columns[2] - 42, 29, 2);
+      ctx.font = '800 21px "Segoe UI", Arial, sans-serif';
+      drawWrapped(ctx, row.own, x + columns[0] + 22, rowY + 32, columns[1] - 40, 25, 2);
+      drawWrapped(ctx, row.others, x + columns[0] + columns[1] + 22, rowY + 32, columns[2] - 42, 25, 2);
     });
 
-    const noteY = tableY + 70 + data.consumptionRows.length * 112 + 34;
+    const noteY = tableY + 58 + data.consumptionRows.length * 88 + 27;
     ctx.fillStyle = COLORS.blue;
-    ctx.font = '600 21px "Segoe UI", Arial, sans-serif';
-    drawWrapped(ctx, data.comparisonNote, x, noteY, width, 29, 2);
+    ctx.font = '600 19px "Segoe UI", Arial, sans-serif';
+    drawWrapped(ctx, data.comparisonNote, x, noteY, width, 26, 2);
 
     ctx.strokeStyle = COLORS.line;
     ctx.beginPath();
@@ -265,9 +298,17 @@
       { label: "Valdau elektros vartojimą", score: result.electricity_management_score },
     ];
     if (result.heating_score !== null && result.heating_score !== undefined) categories.push({ label: "Suprantu savo šilumos vartojimą", score: result.heating_score });
+    const scoreComparisonUnlocked = Boolean(groupComparison?.unlocked);
     return {
       totalScore: result.total_score,
       categories,
+      scoreComparison: {
+        unlocked: scoreComparisonUnlocked,
+        ownScore: Math.round(Number(result.total_score)),
+        groupAverage: scoreComparisonUnlocked ? Math.round(Number(groupComparison.group_average)) : null,
+        percentile: scoreComparisonUnlocked ? Math.round(Number(groupComparison.percentile)) : null,
+        completedCount: Number(groupComparison?.completed_count) || 0,
+      },
       completedDate: completedDate.toLocaleDateString("lt-LT", { year: "numeric", month: "long", day: "numeric" }),
       fileDate: [completedDate.getFullYear(), String(completedDate.getMonth() + 1).padStart(2, "0"), String(completedDate.getDate()).padStart(2, "0")].join("-"),
       consumptionRows: [

@@ -56,6 +56,9 @@ assert.equal(summary.completed_count, 5, "TEST 8 dalyvių skaičius");
 assert.equal(summary.unlocked, true, "TEST 8 rezultatai atrakinti");
 assert.equal(summary.overall_average, 100, "TEST 8 grupės vidurkis");
 assert.equal(summary.self_rating_average, 70, "TEST 8 savęs vertinimo vidurkis procentais");
+assert.equal(summary.electricity_awareness_average, 100, "TEST 8 grupės pažinimo temos vidurkis");
+assert.equal(summary.electricity_management_average, 100, "TEST 8 grupės valdymo temos vidurkis");
+assert.equal(summary.heating_average, null, "TEST 8 šilumos temos vidurkis nerodomas be taikomų atsakymų");
 assert.equal(summary.highest_questions.length, 3, "TEST 8 trys geriausiai įvertinti klausimai");
 const comparison = await api.getScorePercentile("unlock-test", 100, "00000000-0000-4000-8000-000000000005");
 assert.equal(comparison.consumption_comparison_count, 4, "TEST 8 kitų dalyvių suvartojimo imtis");
@@ -69,6 +72,8 @@ const pdfData = globalThis.ResultPdf.createResultData({
   completedAt: "2026-08-30T10:00:00.000Z",
 });
 assert.equal(pdfData.categories.length, 2, "TEST 8 PDF kategorijos");
+assert.equal(pdfData.scoreComparison.unlocked, true, "TEST 8 individualiame PDF įtrauktas grupės palyginimas");
+assert.equal(pdfData.scoreComparison.groupAverage, 100, "TEST 8 individualiame PDF grupės vidurkis");
 assert.match(pdfData.consumptionRows[0].own, /2,77 kWh\/m²/, "TEST 8 PDF suvartojimas vienam m²");
 const minimalPdf = globalThis.ResultPdf.buildPdfFromJpeg(new Uint8Array([255, 216, 255, 217]), 1, 1);
 assert.equal(new TextDecoder().decode(minimalPdf.slice(0, 8)), "%PDF-1.4", "TEST 8 PDF antraštė");
@@ -112,10 +117,12 @@ const resultsSource = await fs.readFile(new URL("../results.js", import.meta.url
 const appSource = await fs.readFile(new URL("../app.js", import.meta.url), "utf8");
 assert.equal(resultsSource.includes("setInterval("), false, "TEST 16 grupės rezultatų ekranas neatnaujinamas periodiškai");
 assert.equal(appSource.includes("setInterval("), false, "TEST 16 individualus ekranas neatlieka periodinių API užklausų");
+assert.equal(resultsSource.includes("download-group-pdf"), false, "TEST 16 grupės rezultatų ekrane nėra PDF atsisiuntimo");
+assert.equal(resultsSource.includes("Norėdami matyti rezultatus atnaujinkite duomenis"), true, "TEST 16 rodomas atnaujinimo paaiškinimas");
+assert.equal(appSource.includes("id=\"refresh-data-button\""), true, "TEST 16 individualiame rezultate yra duomenų atnaujinimo mygtukas");
 const handlers = new Map();
 const root = { innerHTML: "", prepend() {} };
 let summaryCalls = 0;
-let groupPdfCalls = 0;
 const element = (selector) => ({
   disabled: false,
   textContent: "",
@@ -131,10 +138,6 @@ const resultsSandbox = {
       },
     },
     EnergyAssessment: globalThis.EnergyAssessment,
-    ResultPdf: {
-      createGroupResultData: (value) => value,
-      downloadGroupResultPdf: async () => { groupPdfCalls += 1; },
-    },
   },
   document: { querySelector: (selector) => selector === "#results-app" ? root : element(selector) },
   location: { search: "?event=tests" },
@@ -150,8 +153,6 @@ vm.runInNewContext(resultsSource, resultsSandbox);
 assert.equal(summaryCalls, 0, "TEST 16 puslapio atidarymas API nekviečia");
 await handlers.get("#refresh-results")();
 assert.equal(summaryCalls, 1, "TEST 16 mygtukas atlieka vieną API užklausą");
-await handlers.get("#download-group-pdf")();
-assert.equal(groupPdfCalls, 1, "TEST 16 PDF kuriamas iš turimo snapshot");
-assert.equal(summaryCalls, 1, "TEST 16 PDF papildomai API nekviečia");
+assert.equal(handlers.has("#download-group-pdf"), false, "TEST 16 grupės PDF mygtukas nesukuriamas");
 
 console.log("16/16 scenarijų patikrinta sėkmingai.");
